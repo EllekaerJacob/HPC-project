@@ -10,7 +10,7 @@ import multiprocessing
 import time 
 
 from numba import jit
-
+from numba import cuda
 
 
 n_workers=int(sys.argv[2])
@@ -113,7 +113,7 @@ def jacobi_cuda(u,interior_mask,n_iter):
     bpg=(get_bpg(rows,tpb[0]),get_bpg(rows,tpb[0]))
     for _ in range(n_iter):
         single_jacobi_kernel[bpg,tpb](d_x,d_mask,d_y)
-        dx,dy=dy,dx
+        d_x,d_y=d_y,d_x
     if int(n_iter)%2==0:
         return d_x.copy_to_host()
     else:
@@ -169,7 +169,7 @@ if __name__ == '__main__':
         all_interior_mask[i] = interior_mask
 
     #warmup
-    jacobi_cuda(all_u0[0],all_interior_mask[0],10)
+    #jacobi_cuda(all_u0[0],all_interior_mask[0],10)
 
 
     # Run jacobi iterations for each floor plan
