@@ -119,9 +119,6 @@ def jacobi_cuda(u,interior_mask,n_iter):
 
 
 
-
-
-
 def jacobi_multiple(multiple_u,multiple_mask,max_iter,tol=1e-6):
     return np.array([jacobi(u_single,mask_single,max_iter,tol) for (u_single,mask_single) in zip(multiple_u,multiple_mask)])
 
@@ -144,8 +141,6 @@ def summary_stats(u, interior_mask):
 
 if __name__ == '__main__':
 
-    warmup=np.ones((10,10))
-    single_jaciter_jit(warmup)
     # Load data
     LOAD_DIR = '/dtu/projects/02613_2025/data/modified_swiss_dwellings/'
     with open(join(LOAD_DIR, 'building_ids.txt'), 'r') as f:
@@ -157,9 +152,14 @@ if __name__ == '__main__':
         N = int(sys.argv[1])
     building_ids = building_ids[:N]
 
+
     # Load floor plans
     all_u0 = np.empty((N, 514, 514))
     all_interior_mask = np.empty((N, 512, 512), dtype='bool')
+
+    single_jacobi_kernel(all_u0[0],all_interior_mask[0])
+
+
     for i, bid in enumerate(building_ids):
         u0, interior_mask = load_data(LOAD_DIR, bid)
         all_u0[i] = u0
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     def worker(args):
         u, mask = args
-        return jacobi_jit(u, mask, MAX_ITER, ABS_TOL)
+        return jacobi_cuda(u, mask, MAX_ITER, ABS_TOL)
     T0=time.perf_counter()
     with multiprocessing.Pool(n_workers) as pool:
         all_u=np.array(list(pool.imap(worker,zip(all_u0,all_interior_mask),chunksize=1)))
