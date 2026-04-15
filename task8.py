@@ -99,6 +99,24 @@ def single_jacobi_kernel(x,interior_mask,y):
             y[i, j] = x[i, j] 
 
 
+def get_bpg(n,tpb):
+    return (n+(tpb-1))//tpb
+
+
+def jacobi_cuda(u,interior_mask,n_iter):
+    u=np.copy(u)
+    rows,cols=u.shape
+    d_mask=cuda.to_device(interior_mask)
+    tpb=32,32
+    bpg=get_bpg(rows,tpb)
+    for _ in range(n_iter):
+        d_x=cuda.to_device(u)
+        d_y=cuda.device_array_like(d_x)
+        single_jacobi_kernel[bpg,tpb](d_x,d_mask,d_y)
+        u=d_y.copy_to_host()
+    return u
+
+
 
 
 
