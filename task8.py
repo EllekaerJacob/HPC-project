@@ -93,10 +93,10 @@ def single_jacobi_kernel(x,interior_mask,y):
             x[i, j-1] +
             x[i, j+1]
         )
-    if interior_mask[i-1, j-1]:
-            y[i, j] = new_val
-    else:
-            y[i, j] = x[i, j] 
+        if interior_mask[i-1, j-1]:
+                y[i, j] = new_val
+        else:
+                y[i, j] = x[i, j] 
 
 
 def get_bpg(n,tpb):
@@ -107,14 +107,17 @@ def jacobi_cuda(u,interior_mask,n_iter):
     u=np.copy(u)
     rows,cols=u.shape
     d_mask=cuda.to_device(interior_mask)
-    tpb=32,32
-    bpg=get_bpg(rows,tpb)
+    d_x=cuda.to_device(u)
+    d_y=cuda.device_array_like(d_x)
+    tpb=(32,32)
+    bpg=(get_bpg(rows,tpb[0]),get_bpg(rows,tpb[0]))
     for _ in range(n_iter):
-        d_x=cuda.to_device(u)
-        d_y=cuda.device_array_like(d_x)
         single_jacobi_kernel[bpg,tpb](d_x,d_mask,d_y)
-        u=d_y.copy_to_host()
-    return u
+        dx,dy=dy,dx
+    if int(n_iter)%2==0:
+        return d_x.copy_to_host()
+    else:
+        return d_y.copy_to_host()
 
 
 
@@ -157,7 +160,7 @@ if __name__ == '__main__':
     all_u0 = np.empty((N, 514, 514))
     all_interior_mask = np.empty((N, 512, 512), dtype='bool')
 
-    single_jacobi_kernel(all_u0[0],all_interior_mask[0])
+    
 
 
     for i, bid in enumerate(building_ids):
@@ -165,13 +168,17 @@ if __name__ == '__main__':
         all_u0[i] = u0
         all_interior_mask[i] = interior_mask
 
+    #warmup
+    jacobi_cuda(all_u0[0],all_interior_mask[0],10)
+
+
     # Run jacobi iterations for each floor plan
     MAX_ITER = 20_000
     ABS_TOL = 1e-4
 
     def worker(args):
         u, mask = args
-        return jacobi_cuda(u, mask, MAX_ITER, ABS_TOL)
+        return jacobi_cuda(u, mask, MAX_ITER)
     T0=time.perf_counter()
     with multiprocessing.Pool(n_workers) as pool:
         all_u=np.array(list(pool.imap(worker,zip(all_u0,all_interior_mask),chunksize=1)))
