@@ -169,7 +169,7 @@ if __name__ == '__main__':
         all_interior_mask[i] = interior_mask
 
     #warmup
-    #jacobi_cuda(all_u0[0],all_interior_mask[0],10)
+    jacobi_cuda(all_u0[0],all_interior_mask[0],10)
 
 
     # Run jacobi iterations for each floor plan
@@ -179,10 +179,13 @@ if __name__ == '__main__':
     def worker(args):
         u, mask = args
         return jacobi_cuda(u, mask, MAX_ITER)
-    T0=time.perf_counter()
-    with multiprocessing.Pool(n_workers) as pool:
-        all_u=np.array(list(pool.imap(worker,zip(all_u0,all_interior_mask),chunksize=1)))
-    print(f"Total time: {time.perf_counter()-T0}")
+    all_u=np.empty_like(all_u0)
+    start = time.time()
+    for i, (u0, interior_mask) in enumerate(zip(all_u0,all_interior_mask)):
+        u = jacobi_cuda(u0, interior_mask, MAX_ITER)
+        all_u[i] = u
+    end = time.time()
+    print(f"Total time: {end - start:.2f} seconds")
     print(np.shape(all_u))
     
     
