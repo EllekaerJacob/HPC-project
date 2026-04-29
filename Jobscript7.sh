@@ -1,11 +1,11 @@
 
 #!/bin/bash
-#BSUB -J python
+#BSUB -J task7
 #BSUB -q hpc
 #BSUB -W 15
 #BSUB -R "rusage[mem=40GB]"
-#BSUB -o numbaJit_%J.out
-#BSUB -e numbaJit_%J.err
+#BSUB -o taks7_%J.out
+#BSUB -e task7_%J.err
 #BSUB -R "span[hosts=1]"
 #BSUB -n 7
 #BSUB -R "select[model==XeonGold6126]"
